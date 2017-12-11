@@ -1,0 +1,6 @@
+/vendor
+/logs
+/locks
+/attachments
+/csv
+composer.lock
