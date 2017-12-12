@@ -1,6 +1,6 @@
 <?php
 
-$pause = 1;
+$pause = 5;
 
 require __DIR__.'/../core.php';
 
