@@ -21,6 +21,7 @@ class Writer
 		$id = self::getIssetInCSV($data, $where, $csv_name);
 		if ($id === false) {
 			CSV::connect()->save($csv_name, [$data], true);
+			CSV::disconnect();
 			return 1;
 		} else {
 			if (is_array($updated)) {
@@ -29,11 +30,13 @@ class Writer
 				CSV::connect()->data[$id] = $data;
 				CSV::connect()->save();
 				self::updatedStatusCSV($updated[0], $updated[1], $data[$updated[1]], $csv_name);
+				CSV::disconnect();
 				return 2;
 			} else {
 				CSV::connect()->parse($csv_name);
 				CSV::connect()->data[$id] = $data;
 				CSV::connect()->save();
+				CSV::disconnect();
 				return 2;
 			}
 		}
@@ -55,6 +58,7 @@ class Writer
 				$header[] = $key;
 			}
 			CSV::connect()->save($csv_name, [$header], true);
+			CSV::disconnect();
 		}
 	}
 	
@@ -72,6 +76,7 @@ class Writer
 				CSV::connect()->save();
 			}
 		}
+		CSV::disconnect();
 	}
 	
 	/**
@@ -86,6 +91,7 @@ class Writer
 		$count = count($where);
 		CSV::connect()->parse($csv_name);
 		$find = CSV::connect()->data;
+		CSV::disconnect();
 		foreach ($find as $id => $good) {
 			$i = 0;
 			foreach ($where as $key) {
@@ -137,6 +143,7 @@ class Writer
 				CSV::connect()->save();
 			}
 		}
+		CSV::disconnect();
 	}
 	
 	/**

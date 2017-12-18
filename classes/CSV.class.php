@@ -18,4 +18,12 @@ class CSV
 		}
 		return self::$connect;
 	}
+	
+	/**
+	 * Рассоеденить
+	 */
+	static public function disconnect()
+	{
+		self::$connect = null;
+	}
 }

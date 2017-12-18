@@ -23,13 +23,13 @@ class Request
 	{
 		if ($pause) {
 			if (!is_numeric($pause)) {
-				Logger::send('|CURL|ERROR| - The pause parameter is not a number');
+				Logger::send('|CURL|ERROR| - Параметр паузы не является числом');
 				return false;
 			}
 			sleep((int)$pause);
 		}
 		if (!$link) {
-			Logger::send('|CURL|ERROR| - URL not passed');
+			Logger::send('|CURL|ERROR| - URL не передан');
 			return false;
 		}
 		if (!$options) {
@@ -45,7 +45,7 @@ class Request
 		$result = curl_exec($curl);
 		curl_close($curl);
 		if (!$result) {
-			Logger::send("|CURL|ERROR| - No response from $link");
+			Logger::send("|CURL|ERROR| - Нет ответа от $link");
 			return false;
 		}
 		return $result;
