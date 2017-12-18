@@ -1,7 +1,9 @@
 <?php
 require __DIR__.'/../core.php';
 
-Logger::send("|START|SUCCESS| - Script is started. Parsing of ".PARSER_NAME);
+Logger::send("|START|SUCCESS| - Скрипт запущен. Парсинг из ".PARSER_NAME);
+
+$pause = 5;
 
 // Проверяем не находится ли категория в блэк листе
 function isBlackCat($link) {
@@ -15,7 +17,8 @@ function isBlackCat($link) {
 
 // Получаем массив ссылок на категории
 function getCategories() {
-	$html = Request::curl('https://www.hockeyunlimited.fi/', 5);
+	global $pause;
+	$html = Request::curl('https://www.hockeyunlimited.fi/', $pause);
 	$dom = phpQuery::newDocument($html);
 	$links = $dom->find('#NavBarElementID2266322 a');
 	$res = [];
@@ -25,7 +28,7 @@ function getCategories() {
 	}
 	$dom->unloadDocument();
 	if (empty($res)) {
-		Logger::send("|CATEGORIES|ERROR| - Could not create a list of categories. The script is stopped");
+		Logger::send("|CATEGORIES|ERROR| - Не удалось создать список категорий. Скрипт остановлен");
 		exit();
 	}
 	return $res;
@@ -33,7 +36,8 @@ function getCategories() {
 
 // Получаем кол-во страниц
 function getPagesCount($link, $size = 500) {
-	$html = Request::curl($link.'&PageSize='.$size.'&Page=1', 5);
+	global $pause;
+	$html = Request::curl($link.'&PageSize='.$size.'&Page=1', $pause);
 	$dom = phpQuery::newDocument($html);
 	$marker = $dom->find('a[rel=next]');
 	if (count($marker) < 1) {
@@ -110,100 +114,465 @@ function getPhotos($dom) {
 	return $imgs;
 }
 
-// Разбираем страницу товара и отправляем на запись
-function parseGood($href) {
-	$html = Request::curl($href, 5);
+// Разбираем страницу товара и отправляем на запись (Koko)
+function parseGoodKoko($href, $category) {
+	global $pause;
+	$html = Request::curl($href, $pause);
 	$dom = phpQuery::newDocument($html);
 	foreach (getParams($dom, 'Koko') as $koko) {
-		foreach (getParams($dom, 'Flex') as $flex) {
-			foreach (getParams($dom, 'Kätisyys') as $katisyys) {
-				foreach (getParams($dom, 'Väri') as $vari) {
-					foreach (getParams($dom, 'Pituus') as $pituus) {
-						foreach (getParams($dom, 'Eläin') as $elain) {
-							foreach (getParams($dom, 'Maku') as $maku) {
-								foreach (getParams($dom, 'Puoli') as $puoli) {
-									$data = [
-										'product_id' => getIdent($html),
-										'category' => trim($dom->find('a.BreadcrumbItem')->eq(1)->text()),
-										'title' => trim($dom->find('span.name')->text()),
-										'season' => getSeason(trim($dom->find('span.name')->text())),
-										'price' => trim($dom->find('span.price-value>span')->attr('content')),
-										'price_without_discount' => str_replace(['€', ',', ' '], ['', '.', ''], $dom->find('span.LineThrough')->text()),
-										'product_type' => trim($dom->find('a.BreadcrumbItem')->eq(1)->text()),
-										'product_age' => getProductAge(trim($dom->find('span.name')->text())),
-										'manufacturer' => getManufacturer(trim($dom->find('span.name')->text())),
-										'availableurl' => $href,
-										'koko' => $koko,
-										'flex' => $flex,
-										'katisyys' => $katisyys,
-										'vari' => $vari,
-										'pituus' => $pituus,
-										'elain' => $elain,
-										'maku' => $maku,
-										'puoli' => $puoli,
-										'updated' => 0,
-									];
-									$csv = Writer::insertOrUpdateCSV($data, [
-										'availableurl',
-										'koko',
-										'flex',
-										'katisyys',
-										'vari',
-										'pituus',
-										'elain',
-										'maku',
-										'puoli',
-									]/*, ['updated', 'product_id']*/);
-									switch ($csv) {
-										case 1:
-											Logger::send("|RECORD|ADD| - Good ".$data['title']." added in CSV");
-											break;
-										case 2:
-											Logger::send("|RECORD|UPDATE| - Good ".$data['title']." updated in CSV");
-											break;
-									}
-									$mysql = Writer::insertOrUpdate($data, [
-										'availableurl',
-										'koko',
-										'flex',
-										'katisyys',
-										'vari',
-										'pituus',
-										'elain',
-										'maku',
-										'puoli',
-									], ['updated', 'product_id']);
-									switch ($mysql) {
-										case 1:
-											Logger::send("|RECORD|ADD| - Good ".$data['title']." added in MySQL");
-											break;
-										case 2:
-											Logger::send("|RECORD|UPDATE| - Good ".$data['title']." updated in MySQL");
-											break;
-									}
-								}
-							}
-						}
+		$data = [
+			'product_id' => getIdent($html),
+			'category' => trim($dom->find('a.BreadcrumbItem')->eq(1)->text()),
+			'title' => trim($dom->find('span.name')->text()),
+			'season' => getSeason(trim($dom->find('span.name')->text())),
+			'price' => trim($dom->find('span.price-value>span')->attr('content')),
+			'price_without_discount' => str_replace(['€', ',', ' '], ['', '.', ''], $dom->find('span.LineThrough')->text()),
+			'product_type' => trim($dom->find('a.BreadcrumbItem')->eq(1)->text()),
+			'product_age' => getProductAge(trim($dom->find('span.name')->text())),
+			'manufacturer' => getManufacturer(trim($dom->find('span.name')->text())),
+			'availableurl' => $href,
+			'koko' => $koko,
+			'updated' => 0,
+		];
+		$csv = Writer::insertOrUpdateCSV($data, [
+			'availableurl',
+			'koko',
+		], $category/*, ['updated', 'product_id']*/);
+		switch ($csv) {
+			case 1:
+				Logger::send("|RECORD|ADD| - Товар ".$data['title']." добавлен");
+				break;
+			case 2:
+				Logger::send("|RECORD|UPDATE| - Товар ".$data['title']." обновлен");
+				break;
+		}
+	}
+	//Writer::deleteNoUpdatedCSV($data['product_id'], 'product_id', 'updated', $category);
+	Writer::eraseAttachInIdFolder($data['product_id']);
+	Writer::saveOnUpdateImages($data['product_id'], getPhotos($dom));
+	$dom->unloadDocument();
+}
+
+// Разбираем страницу товара и отправляем на запись (Flex Katisyys)
+function parseGoodFlexKatisyys($href, $category) {
+	global $pause;
+	$html = Request::curl($href, $pause);
+	$dom = phpQuery::newDocument($html);
+	foreach (getParams($dom, 'Flex') as $flex) {
+		foreach (getParams($dom, 'Kätisyys') as $katisyys) {
+			$data = [
+				'product_id' => getIdent($html),
+				'category' => trim($dom->find('a.BreadcrumbItem')->eq(1)->text()),
+				'title' => trim($dom->find('span.name')->text()),
+				'season' => getSeason(trim($dom->find('span.name')->text())),
+				'price' => trim($dom->find('span.price-value>span')->attr('content')),
+				'price_without_discount' => str_replace(['€', ',', ' '], ['', '.', ''], $dom->find('span.LineThrough')->text()),
+				'product_type' => trim($dom->find('a.BreadcrumbItem')->eq(1)->text()),
+				'product_age' => getProductAge(trim($dom->find('span.name')->text())),
+				'manufacturer' => getManufacturer(trim($dom->find('span.name')->text())),
+				'availableurl' => $href,
+				'flex' => $flex,
+				'katisyys' => $katisyys,
+				'updated' => 0,
+			];
+			$csv = Writer::insertOrUpdateCSV($data, [
+				'availableurl',
+				'flex',
+				'katisyys',
+			], $category/*, ['updated', 'product_id']*/);
+			switch ($csv) {
+				case 1:
+					Logger::send("|RECORD|ADD| - Товар ".$data['title']." добавлен");
+					break;
+				case 2:
+					Logger::send("|RECORD|UPDATE| - Товар ".$data['title']." обновлен");
+					break;
+			}
+		}
+	}
+	//Writer::deleteNoUpdatedCSV($data['product_id'], 'product_id', 'updated', $category);
+	Writer::eraseAttachInIdFolder($data['product_id']);
+	Writer::saveOnUpdateImages($data['product_id'], getPhotos($dom));
+	$dom->unloadDocument();
+}
+
+// Разбираем страницу товара и отправляем на запись (Koko Vari)
+function parseGoodKokoVari($href, $category) {
+	global $pause;
+	$html = Request::curl($href, $pause);
+	$dom = phpQuery::newDocument($html);
+	foreach (getParams($dom, 'Koko') as $koko) {
+		foreach (getParams($dom, 'Väri') as $vari) {
+			$data = [
+				'product_id' => getIdent($html),
+				'category' => trim($dom->find('a.BreadcrumbItem')->eq(1)->text()),
+				'title' => trim($dom->find('span.name')->text()),
+				'season' => getSeason(trim($dom->find('span.name')->text())),
+				'price' => trim($dom->find('span.price-value>span')->attr('content')),
+				'price_without_discount' => str_replace(['€', ',', ' '], ['', '.', ''], $dom->find('span.LineThrough')->text()),
+				'product_type' => trim($dom->find('a.BreadcrumbItem')->eq(1)->text()),
+				'product_age' => getProductAge(trim($dom->find('span.name')->text())),
+				'manufacturer' => getManufacturer(trim($dom->find('span.name')->text())),
+				'availableurl' => $href,
+				'koko' => $koko,
+				'vari' => $vari,
+				'updated' => 0,
+			];
+			$csv = Writer::insertOrUpdateCSV($data, [
+				'availableurl',
+				'koko',
+				'vari',
+			], $category/*, ['updated', 'product_id']*/);
+			switch ($csv) {
+				case 1:
+					Logger::send("|RECORD|ADD| - Товар ".$data['title']." добавлен");
+					break;
+				case 2:
+					Logger::send("|RECORD|UPDATE| - Товар ".$data['title']." обновлен");
+					break;
+			}
+		}
+	}
+	//Writer::deleteNoUpdatedCSV($data['product_id'], 'product_id', 'updated', $category);
+	Writer::eraseAttachInIdFolder($data['product_id']);
+	Writer::saveOnUpdateImages($data['product_id'], getPhotos($dom));
+	$dom->unloadDocument();
+}
+
+// Разбираем страницу товара и отправляем на запись (Koko Vari Flex Katisyys)
+function parseGoodKokoVariFlexKatisyys($href, $category) {
+	global $pause;
+	$html = Request::curl($href, $pause);
+	$dom = phpQuery::newDocument($html);
+	foreach (getParams($dom, 'Koko') as $koko) {
+		foreach (getParams($dom, 'Väri') as $vari) {
+			foreach (getParams($dom, 'Flex') as $flex) {
+				foreach (getParams($dom, 'Kätisyys') as $katisyys) {
+					$data = [
+						'product_id' => getIdent($html),
+						'category' => trim($dom->find('a.BreadcrumbItem')->eq(1)->text()),
+						'title' => trim($dom->find('span.name')->text()),
+						'season' => getSeason(trim($dom->find('span.name')->text())),
+						'price' => trim($dom->find('span.price-value>span')->attr('content')),
+						'price_without_discount' => str_replace(['€', ',', ' '], ['', '.', ''], $dom->find('span.LineThrough')->text()),
+						'product_type' => trim($dom->find('a.BreadcrumbItem')->eq(1)->text()),
+						'product_age' => getProductAge(trim($dom->find('span.name')->text())),
+						'manufacturer' => getManufacturer(trim($dom->find('span.name')->text())),
+						'availableurl' => $href,
+						'koko' => $koko,
+						'vari' => $vari,
+						'flex' => $flex,
+						'katisyys' => $katisyys,
+						'updated' => 0,
+					];
+					$csv = Writer::insertOrUpdateCSV($data, [
+						'availableurl',
+						'koko',
+						'vari',
+						'flex',
+						'katisyys',
+					], $category/*, ['updated', 'product_id']*/);
+					switch ($csv) {
+						case 1:
+							Logger::send("|RECORD|ADD| - Товар ".$data['title']." добавлен");
+							break;
+						case 2:
+							Logger::send("|RECORD|UPDATE| - Товар ".$data['title']." обновлен");
+							break;
 					}
 				}
 			}
 		}
 	}
-	Writer::deleteNoUpdated($data['product_id'], 'product_id', 'updated');
-	//Writer::deleteNoUpdatedCSV($data['product_id'], 'product_id', 'updated');
+	//Writer::deleteNoUpdatedCSV($data['product_id'], 'product_id', 'updated', $category);
+	Writer::eraseAttachInIdFolder($data['product_id']);
+	Writer::saveOnUpdateImages($data['product_id'], getPhotos($dom));
+	$dom->unloadDocument();
+}
+
+// Разбираем страницу товара и отправляем на запись (Koko Vari Pituus)
+function parseGoodKokoVariPituus($href, $category) {
+	global $pause;
+	$html = Request::curl($href, $pause);
+	$dom = phpQuery::newDocument($html);
+	foreach (getParams($dom, 'Koko') as $koko) {
+		foreach (getParams($dom, 'Väri') as $vari) {
+			foreach (getParams($dom, 'Pituus') as $pituus) {
+				$data = [
+					'product_id' => getIdent($html),
+					'category' => trim($dom->find('a.BreadcrumbItem')->eq(1)->text()),
+					'title' => trim($dom->find('span.name')->text()),
+					'season' => getSeason(trim($dom->find('span.name')->text())),
+					'price' => trim($dom->find('span.price-value>span')->attr('content')),
+					'price_without_discount' => str_replace(['€', ',', ' '], ['', '.', ''], $dom->find('span.LineThrough')->text()),
+					'product_type' => trim($dom->find('a.BreadcrumbItem')->eq(1)->text()),
+					'product_age' => getProductAge(trim($dom->find('span.name')->text())),
+					'manufacturer' => getManufacturer(trim($dom->find('span.name')->text())),
+					'availableurl' => $href,
+					'koko' => $koko,
+					'vari' => $vari,
+					'pituus' => $pituus,
+					'updated' => 0,
+				];
+				$csv = Writer::insertOrUpdateCSV($data, [
+					'availableurl',
+					'koko',
+					'vari',
+					'pituus',
+				], $category/*, ['updated', 'product_id']*/);
+				switch ($csv) {
+					case 1:
+						Logger::send("|RECORD|ADD| - Товар ".$data['title']." добавлен");
+						break;
+					case 2:
+						Logger::send("|RECORD|UPDATE| - Товар ".$data['title']." обновлен");
+						break;
+				}
+			}
+		}
+	}
+	//Writer::deleteNoUpdatedCSV($data['product_id'], 'product_id', 'updated', $category);
+	Writer::eraseAttachInIdFolder($data['product_id']);
+	Writer::saveOnUpdateImages($data['product_id'], getPhotos($dom));
+	$dom->unloadDocument();
+}
+
+// Разбираем страницу товара и отправляем на запись (Koko Vari Elain Pituus)
+function parseGoodKokoVariElainPituus($href, $category) {
+	global $pause;
+	$html = Request::curl($href, $pause);
+	$dom = phpQuery::newDocument($html);
+	foreach (getParams($dom, 'Koko') as $koko) {
+		foreach (getParams($dom, 'Väri') as $vari) {
+			foreach (getParams($dom, 'Eläin') as $elain) {
+				foreach (getParams($dom, 'Pituus') as $pituus) {
+					$data = [
+						'product_id' => getIdent($html),
+						'category' => trim($dom->find('a.BreadcrumbItem')->eq(1)->text()),
+						'title' => trim($dom->find('span.name')->text()),
+						'season' => getSeason(trim($dom->find('span.name')->text())),
+						'price' => trim($dom->find('span.price-value>span')->attr('content')),
+						'price_without_discount' => str_replace(['€', ',', ' '], ['', '.', ''], $dom->find('span.LineThrough')->text()),
+						'product_type' => trim($dom->find('a.BreadcrumbItem')->eq(1)->text()),
+						'product_age' => getProductAge(trim($dom->find('span.name')->text())),
+						'manufacturer' => getManufacturer(trim($dom->find('span.name')->text())),
+						'availableurl' => $href,
+						'koko' => $koko,
+						'vari' => $vari,
+						'elain' => $elain,
+						'pituus' => $pituus,
+						'updated' => 0,
+					];
+					$csv = Writer::insertOrUpdateCSV($data, [
+						'availableurl',
+						'koko',
+						'vari',
+						'elain',
+						'pituus',
+					], $category/*, ['updated', 'product_id']*/);
+					switch ($csv) {
+						case 1:
+							Logger::send("|RECORD|ADD| - Товар ".$data['title']." добавлен");
+							break;
+						case 2:
+							Logger::send("|RECORD|UPDATE| - Товар ".$data['title']." обновлен");
+							break;
+					}
+				}
+			}
+		}
+	}
+	//Writer::deleteNoUpdatedCSV($data['product_id'], 'product_id', 'updated', $category);
+	Writer::eraseAttachInIdFolder($data['product_id']);
+	Writer::saveOnUpdateImages($data['product_id'], getPhotos($dom));
+	$dom->unloadDocument();
+}
+
+// Разбираем страницу товара и отправляем на запись (Koko Vari Maku)
+function parseGoodKokoVariMaku($href, $category) {
+	global $pause;
+	$html = Request::curl($href, $pause);
+	$dom = phpQuery::newDocument($html);
+	foreach (getParams($dom, 'Koko') as $koko) {
+		foreach (getParams($dom, 'Väri') as $vari) {
+			foreach (getParams($dom, 'Maku') as $maku) {
+				$data = [
+					'product_id' => getIdent($html),
+					'category' => trim($dom->find('a.BreadcrumbItem')->eq(1)->text()),
+					'title' => trim($dom->find('span.name')->text()),
+					'season' => getSeason(trim($dom->find('span.name')->text())),
+					'price' => trim($dom->find('span.price-value>span')->attr('content')),
+					'price_without_discount' => str_replace(['€', ',', ' '], ['', '.', ''], $dom->find('span.LineThrough')->text()),
+					'product_type' => trim($dom->find('a.BreadcrumbItem')->eq(1)->text()),
+					'product_age' => getProductAge(trim($dom->find('span.name')->text())),
+					'manufacturer' => getManufacturer(trim($dom->find('span.name')->text())),
+					'availableurl' => $href,
+					'koko' => $koko,
+					'vari' => $vari,
+					'maku' => $maku,
+					'updated' => 0,
+				];
+				$csv = Writer::insertOrUpdateCSV($data, [
+					'availableurl',
+					'koko',
+					'vari',
+					'maku',
+				], $category/*, ['updated', 'product_id']*/);
+				switch ($csv) {
+					case 1:
+						Logger::send("|RECORD|ADD| - Товар ".$data['title']." добавлен");
+						break;
+					case 2:
+						Logger::send("|RECORD|UPDATE| - Товар ".$data['title']." обновлен");
+						break;
+				}
+			}
+		}
+	}
+	//Writer::deleteNoUpdatedCSV($data['product_id'], 'product_id', 'updated', $category);
+	Writer::eraseAttachInIdFolder($data['product_id']);
+	Writer::saveOnUpdateImages($data['product_id'], getPhotos($dom));
+	$dom->unloadDocument();
+}
+
+// Разбираем страницу товара и отправляем на запись (Koko Vari Pouli)
+function parseGoodKokoVariPouli($href, $category) {
+	global $pause;
+	$html = Request::curl($href, $pause);
+	$dom = phpQuery::newDocument($html);
+	foreach (getParams($dom, 'Koko') as $koko) {
+		foreach (getParams($dom, 'Väri') as $vari) {
+			foreach (getParams($dom, 'Puoli') as $puoli) {
+				$data = [
+					'product_id' => getIdent($html),
+					'category' => trim($dom->find('a.BreadcrumbItem')->eq(1)->text()),
+					'title' => trim($dom->find('span.name')->text()),
+					'season' => getSeason(trim($dom->find('span.name')->text())),
+					'price' => trim($dom->find('span.price-value>span')->attr('content')),
+					'price_without_discount' => str_replace(['€', ',', ' '], ['', '.', ''], $dom->find('span.LineThrough')->text()),
+					'product_type' => trim($dom->find('a.BreadcrumbItem')->eq(1)->text()),
+					'product_age' => getProductAge(trim($dom->find('span.name')->text())),
+					'manufacturer' => getManufacturer(trim($dom->find('span.name')->text())),
+					'availableurl' => $href,
+					'koko' => $koko,
+					'vari' => $vari,
+					'puoli' => $puoli,
+					'updated' => 0,
+				];
+				$csv = Writer::insertOrUpdateCSV($data, [
+					'availableurl',
+					'koko',
+					'vari',
+					'puoli',
+				], $category/*, ['updated', 'product_id']*/);
+				switch ($csv) {
+					case 1:
+						Logger::send("|RECORD|ADD| - Товар ".$data['title']." добавлен");
+						break;
+					case 2:
+						Logger::send("|RECORD|UPDATE| - Товар ".$data['title']." обновлен");
+						break;
+				}
+			}
+		}
+	}
+	//Writer::deleteNoUpdatedCSV($data['product_id'], 'product_id', 'updated', $category);
+	Writer::eraseAttachInIdFolder($data['product_id']);
+	Writer::saveOnUpdateImages($data['product_id'], getPhotos($dom));
+	$dom->unloadDocument();
+}
+
+// Разбираем страницу товара и отправляем на запись (Vari)
+function parseGoodVari($href, $category) {
+	global $pause;
+	$html = Request::curl($href, $pause);
+	$dom = phpQuery::newDocument($html);
+	foreach (getParams($dom, 'Väri') as $vari) {
+		$data = [
+			'product_id' => getIdent($html),
+			'category' => trim($dom->find('a.BreadcrumbItem')->eq(1)->text()),
+			'title' => trim($dom->find('span.name')->text()),
+			'season' => getSeason(trim($dom->find('span.name')->text())),
+			'price' => trim($dom->find('span.price-value>span')->attr('content')),
+			'price_without_discount' => str_replace(['€', ',', ' '], ['', '.', ''], $dom->find('span.LineThrough')->text()),
+			'product_type' => trim($dom->find('a.BreadcrumbItem')->eq(1)->text()),
+			'product_age' => getProductAge(trim($dom->find('span.name')->text())),
+			'manufacturer' => getManufacturer(trim($dom->find('span.name')->text())),
+			'availableurl' => $href,
+			'vari' => $vari,
+			'updated' => 0,
+		];
+		$csv = Writer::insertOrUpdateCSV($data, [
+			'availableurl',
+			'vari',
+		], $category/*, ['updated', 'product_id']*/);
+		switch ($csv) {
+			case 1:
+				Logger::send("|RECORD|ADD| - Товар ".$data['title']." добавлен");
+				break;
+			case 2:
+				Logger::send("|RECORD|UPDATE| - Товар ".$data['title']." обновлен");
+				break;
+		}
+	}
+	//Writer::deleteNoUpdatedCSV($data['product_id'], 'product_id', 'updated', $category);
+	Writer::eraseAttachInIdFolder($data['product_id']);
+	Writer::saveOnUpdateImages($data['product_id'], getPhotos($dom));
+	$dom->unloadDocument();
+}
+
+// Разбираем страницу товара и отправляем на запись (Koko Maku)
+function parseGoodKokoMaku($href, $category) {
+	global $pause;
+	$html = Request::curl($href, $pause);
+	$dom = phpQuery::newDocument($html);
+	foreach (getParams($dom, 'Koko') as $koko) {
+		foreach (getParams($dom, 'Maku') as $maku) {
+			$data = [
+				'product_id' => getIdent($html),
+				'category' => trim($dom->find('a.BreadcrumbItem')->eq(1)->text()),
+				'title' => trim($dom->find('span.name')->text()),
+				'season' => getSeason(trim($dom->find('span.name')->text())),
+				'price' => trim($dom->find('span.price-value>span')->attr('content')),
+				'price_without_discount' => str_replace(['€', ',', ' '], ['', '.', ''], $dom->find('span.LineThrough')->text()),
+				'product_type' => trim($dom->find('a.BreadcrumbItem')->eq(1)->text()),
+				'product_age' => getProductAge(trim($dom->find('span.name')->text())),
+				'manufacturer' => getManufacturer(trim($dom->find('span.name')->text())),
+				'availableurl' => $href,
+				'koko' => $koko,
+				'maku' => $maku,
+				'updated' => 0,
+			];
+			$csv = Writer::insertOrUpdateCSV($data, [
+				'availableurl',
+				'koko',
+				'maku',
+			], $category/*, ['updated', 'product_id']*/);
+			switch ($csv) {
+				case 1:
+					Logger::send("|RECORD|ADD| - Товар ".$data['title']." добавлен");
+					break;
+				case 2:
+					Logger::send("|RECORD|UPDATE| - Товар ".$data['title']." обновлен");
+					break;
+			}
+		}
+	}
+	//Writer::deleteNoUpdatedCSV($data['product_id'], 'product_id', 'updated', $category);
 	Writer::eraseAttachInIdFolder($data['product_id']);
 	Writer::saveOnUpdateImages($data['product_id'], getPhotos($dom));
 	$dom->unloadDocument();
 }
 
 // Получаем линки объявлений со страницы
-function parsPage($link, $page, $size = 500) {
-	$html = Request::curl($link.'&PageSize='.$size.'&Page='.$page, 5);
+function parsPage($link, $page, $category, $size = 500) {
+	global $pause;
+	$html = Request::curl($link.'&PageSize='.$size.'&Page='.$page, $pause);
 	$dom = phpQuery::newDocument($html);
 	$goods = $dom->find('h3.TopPaddingWide>a');
 	if (count($goods) < 1) {
 		$dom->unloadDocument();
-		Logger::send("|GOODS|ERROR| - Failed to get list of products");
+		Logger::send("|GOODS|ERROR| - Не удалось получить список товаров");
 		return false;
 	}
 	$hrefs = [];
@@ -213,21 +582,65 @@ function parsPage($link, $page, $size = 500) {
 	$dom->unloadDocument();
 	if (empty($hrefs)) {
 		$dom->unloadDocument();
-		Logger::send("|GOODS|ERROR| - Failed to get list of products");
+		Logger::send("|GOODS|ERROR| - Не удалось получить список товаров");
 		return false;
 	}
+
 	foreach ($hrefs as $href) {
-		parseGood($href);
+		if (
+			$category == 'Jääkiekkoluistimet' or
+			$category == 'Jääkiekkohartiasuojat' or
+			$category == 'Kyynärpääsuojat' or
+			$category == 'Polvisuojat' or
+			$category == 'Alasuojat' or
+			$category == 'Fanituotteet'
+		) {
+			parseGoodKoko($href, $category);
+		} elseif ($category == 'Jääkiekkomailat') {
+			parseGoodFlexKatisyys($href, $category);
+		} elseif (
+			$category == 'Jääkiekkokypärät' or
+			$category == 'Jääkiekkohanskat' or
+			$category == 'Jääkiekkohousut' or
+			$category == 'Rullakiekko' or
+			$category == 'Erotuomarit' or
+			$category == 'Tekstiilit' or
+			$category == 'Tekniset asusteet' or
+			$category == 'Varustekassit' or
+			$category == 'VAPAA-AJAN TUOTTEET'
+		) {
+			parseGoodKokoVari($href, $category);
+		} elseif ($category == 'Maalivahdin varusteet') {
+			parseGoodKokoVariFlexKatisyys($href, $category);
+		} elseif ($category == 'Jääkiekon oheistarvikkeet') {
+			parseGoodKokoVariPituus($href, $category);
+		} elseif ($category == 'Taitoluistelu') {
+			parseGoodKokoVariElainPituus($href, $category);
+		} elseif ($category == 'Ringette') {
+			parseGoodKokoVariMaku($href, $category);
+		} elseif ($category == 'Salibandy') {
+			parseGoodKokoVariPouli($href, $category);
+		} elseif (
+			$category == 'Oheisharjoittelu' or
+			$category == 'TEIPIT' or
+			$category == 'FING SPINNER'
+		) {
+			parseGoodVari($href, $category);
+		} elseif ($category == 'Kaukalopallo') {
+			parseGoodKokoMaku($href, $category);
+		} else {
+			break;
+		}
 	}
 }
 
 foreach (getCategories() as $name => $link) {
 	$pages = getPagesCount($link);
 	for ($p = 1; $p <= $pages; $p++) {
-		Logger::send("|CATEGORY|WAIT| - Category: $name. Page: $p of $pages");
-		parsPage($link, $p);
+		Logger::send("|CATEGORY|WAIT| - Категория: $name. Страница: $p из $pages");
+		parsPage($link, $p, $name);
 	}
-	Logger::send("|CATEGORY|FINISH| - Bypassing the $name category is complete");
+	Logger::send("|CATEGORY|FINISH| - Парсинг из категории $name завершен");
 }
 
-Logger::send("|FINISH|SUCCESS| - Script has successfully worked. Parsing of ".PARSER_NAME);
+Logger::send("|FINISH|SUCCESS| - Работа скрипта завершена. Парсинг из ".PARSER_NAME);

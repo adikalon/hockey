@@ -22,7 +22,7 @@ define('PARSER_LOGS', LOGS.'/'.PARSER_NAME);
 define('PARSER_RESOURCES', PARSERS.'/'.PARSER_NAME);
 define('COMPOSER', CORE.'/vendor/autoload.php');
 define('CSV', CORE.'/csv');
-define('CSV_NAME', CSV.'/'.PARSER_NAME.'.csv');
+define('CSV_PARSER', CSV.'/'.PARSER_NAME);
 
 spl_autoload_register(function ($class) {
 	require CLASSES.'/'.$class.'.class.php';
