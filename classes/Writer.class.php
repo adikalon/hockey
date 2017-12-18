@@ -52,6 +52,9 @@ class Writer
 		if (!file_exists(CSV_PARSER) or !is_dir(CSV_PARSER)) {
 			mkdir(CSV_PARSER);
 		}
+		if (file_exists($csv_name) and !is_dir($csv_name) and filesize($csv_name) < 4) {
+			unlink($csv_name);
+		}
 		if (!file_exists($csv_name) or is_dir($csv_name)) {
 			$header = [];
 			foreach ($fields as $key => $value) {
