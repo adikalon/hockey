@@ -44,6 +44,7 @@ class Request
 		curl_setopt_array($curl, $options);
 		$result = curl_exec($curl);
 		curl_close($curl);
+		unset($curl);
 		if (!$result) {
 			Logger::send("|CURL|ERROR| - Нет ответа от $link");
 			return false;

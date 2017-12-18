@@ -79,6 +79,7 @@ class Writer
 				CSV::connect()->save();
 			}
 		}
+		unset($find);
 		CSV::disconnect();
 	}
 	
@@ -103,9 +104,11 @@ class Writer
 				}
 			}
 			if ($i >= $count) {
+				unset($find);
 				return $id;
 			}
 		}
+		unset($find);
 		return false;
 	}
 	
@@ -146,6 +149,7 @@ class Writer
 				CSV::connect()->save();
 			}
 		}
+		unset($findTwo, $find);
 		CSV::disconnect();
 	}
 	
