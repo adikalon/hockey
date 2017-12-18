@@ -3,7 +3,7 @@ require __DIR__.'/../core.php';
 
 Logger::send("|START|SUCCESS| - Скрипт запущен. Парсинг из ".PARSER_NAME);
 
-$pause = 5;
+$pause = 0;
 
 // Проверяем не находится ли категория в блэк листе
 function isBlackCat($link) {
@@ -27,6 +27,7 @@ function getCategories() {
 		$res[trim(pq($link)->text())] = 'https://www.hockeyunlimited.fi/epages/hockeyunlimited.sf/fi_FI/'.pq($link)->attr('href');
 	}
 	$dom->unloadDocument();
+	unset($html, $dom, $links);
 	if (empty($res)) {
 		Logger::send("|CATEGORIES|ERROR| - Не удалось создать список категорий. Скрипт остановлен");
 		exit();
@@ -52,12 +53,14 @@ function getPagesCount($link, $size = 500) {
 		}
 	}
 	$dom->unloadDocument();
+	unset($html, $dom, $marker, $cur);
 	return max($pages);
 }
 
 // Получаем сезон
 function getSeason($string) {
 	preg_match('/.*S(\d\d).*/', $string, $match);
+	unset($string);
 	if (isset($match[1]) and !empty($match[1])) {
 		return '20'.$match[1];
 	}
@@ -67,6 +70,7 @@ function getSeason($string) {
 // Получаем Product Age
 function getProductAge($string) {
 	preg_match('/.*(junior|senior|youth).*/', strtolower($string), $match);
+	unset($string);
 	if (isset($match[1]) and !empty($match[1])) {
 		return $match[1];
 	}
@@ -76,6 +80,7 @@ function getProductAge($string) {
 // Получаем название производителя
 function getManufacturer($string) {
 	preg_match('/.*(CCM|Bauer).*/', $string, $match);
+	unset($string);
 	if (isset($match[1]) and !empty($match[1])) {
 		return $match[1];
 	}
@@ -98,12 +103,14 @@ function getParams($dom, $name) {
 	if (empty($params)) {
 		return [''];
 	}
+	unset($dom, $name, $options);
 	return $params;
 }
 
 // Получаем id товара
 function getIdent($html) {
 	preg_match("/.*objectId:\s'(\d+)'.*/", $html, $match);
+	unset($html);
 	return trim($match[1]);
 }
 
@@ -114,6 +121,7 @@ function getPhotos($dom) {
 	foreach ($results as $res) {
 		$imgs[] = 'https://www.hockeyunlimited.fi'.trim(pq($res)->attr('data-src-l'));
 	}
+	unset($results);
 	return $imgs;
 }
 
@@ -154,6 +162,7 @@ function parseGoodKoko($href, $category) {
 	Writer::eraseAttachInIdFolder($data['product_id']);
 	Writer::saveOnUpdateImages($data['product_id'], getPhotos($dom));
 	$dom->unloadDocument();
+	unset($html, $dom, $data, $csv, $category, $href, $pause);
 }
 
 // Разбираем страницу товара и отправляем на запись (Flex Katisyys)
@@ -197,6 +206,7 @@ function parseGoodFlexKatisyys($href, $category) {
 	Writer::eraseAttachInIdFolder($data['product_id']);
 	Writer::saveOnUpdateImages($data['product_id'], getPhotos($dom));
 	$dom->unloadDocument();
+	unset($html, $dom, $data, $csv, $category, $href, $pause);
 }
 
 // Разбираем страницу товара и отправляем на запись (Koko Vari)
@@ -240,6 +250,7 @@ function parseGoodKokoVari($href, $category) {
 	Writer::eraseAttachInIdFolder($data['product_id']);
 	Writer::saveOnUpdateImages($data['product_id'], getPhotos($dom));
 	$dom->unloadDocument();
+	unset($html, $dom, $data, $csv, $category, $href, $pause);
 }
 
 // Разбираем страницу товара и отправляем на запись (Koko Vari Flex Katisyys)
@@ -291,6 +302,7 @@ function parseGoodKokoVariFlexKatisyys($href, $category) {
 	Writer::eraseAttachInIdFolder($data['product_id']);
 	Writer::saveOnUpdateImages($data['product_id'], getPhotos($dom));
 	$dom->unloadDocument();
+	unset($html, $dom, $data, $csv, $category, $href, $pause);
 }
 
 // Разбираем страницу товара и отправляем на запись (Koko Vari Pituus)
@@ -338,6 +350,7 @@ function parseGoodKokoVariPituus($href, $category) {
 	Writer::eraseAttachInIdFolder($data['product_id']);
 	Writer::saveOnUpdateImages($data['product_id'], getPhotos($dom));
 	$dom->unloadDocument();
+	unset($html, $dom, $data, $csv, $category, $href, $pause);
 }
 
 // Разбираем страницу товара и отправляем на запись (Koko Vari Elain Pituus)
@@ -389,6 +402,7 @@ function parseGoodKokoVariElainPituus($href, $category) {
 	Writer::eraseAttachInIdFolder($data['product_id']);
 	Writer::saveOnUpdateImages($data['product_id'], getPhotos($dom));
 	$dom->unloadDocument();
+	unset($html, $dom, $data, $csv, $category, $href, $pause);
 }
 
 // Разбираем страницу товара и отправляем на запись (Koko Vari Maku)
@@ -436,6 +450,7 @@ function parseGoodKokoVariMaku($href, $category) {
 	Writer::eraseAttachInIdFolder($data['product_id']);
 	Writer::saveOnUpdateImages($data['product_id'], getPhotos($dom));
 	$dom->unloadDocument();
+	unset($html, $dom, $data, $csv, $category, $href, $pause);
 }
 
 // Разбираем страницу товара и отправляем на запись (Koko Vari Pouli)
@@ -483,6 +498,7 @@ function parseGoodKokoVariPouli($href, $category) {
 	Writer::eraseAttachInIdFolder($data['product_id']);
 	Writer::saveOnUpdateImages($data['product_id'], getPhotos($dom));
 	$dom->unloadDocument();
+	unset($html, $dom, $data, $csv, $category, $href, $pause);
 }
 
 // Разбираем страницу товара и отправляем на запись (Vari)
@@ -522,6 +538,7 @@ function parseGoodVari($href, $category) {
 	Writer::eraseAttachInIdFolder($data['product_id']);
 	Writer::saveOnUpdateImages($data['product_id'], getPhotos($dom));
 	$dom->unloadDocument();
+	unset($html, $dom, $data, $csv, $category, $href, $pause);
 }
 
 // Разбираем страницу товара и отправляем на запись (Koko Maku)
@@ -565,6 +582,7 @@ function parseGoodKokoMaku($href, $category) {
 	Writer::eraseAttachInIdFolder($data['product_id']);
 	Writer::saveOnUpdateImages($data['product_id'], getPhotos($dom));
 	$dom->unloadDocument();
+	unset($html, $dom, $data, $csv, $category, $href, $pause);
 }
 
 // Получаем линки объявлений со страницы
@@ -588,7 +606,7 @@ function parsPage($link, $page, $category, $size = 500) {
 		Logger::send("|GOODS|ERROR| - Не удалось получить список товаров");
 		return false;
 	}
-
+	unset($html, $dom, $goods);
 	foreach ($hrefs as $href) {
 		if (
 			$category == 'Jääkiekkoluistimet' or
@@ -634,6 +652,7 @@ function parsPage($link, $page, $category, $size = 500) {
 		} else {
 			break;
 		}
+		CSV::$connect = null;
 	}
 }
 
