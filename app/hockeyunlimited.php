@@ -95,6 +95,9 @@ function getParams($dom, $name) {
 			}
 		}
 	}
+	if (empty($params)) {
+		return [''];
+	}
 	return $params;
 }
 
