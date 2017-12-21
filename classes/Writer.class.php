@@ -17,9 +17,11 @@ class Writer
 	static public function insertOrUpdateCSV($data, $where, $category, $updated = false)
 	{
 		$csv_name = self::getCSVName($category);
+		//array_unshift($data, ['id' => self::getId($csv_name)]);
+		$data = ['id' => self::getId($csv_name)] + $data;
 		self::issetCSV($data, $csv_name);
-		$id = self::getIssetInCSV($data, $where, $csv_name);
-		if ($id === false) {
+		$good = self::getIssetInCSV($data, $where, $csv_name);
+		if ($good === false) {
 			CSV::connect()->save($csv_name, [$data], true);
 			CSV::disconnect();
 			return 1;
@@ -27,14 +29,16 @@ class Writer
 			if (is_array($updated)) {
 				$data[$updated[0]] = 1;
 				CSV::connect()->parse($csv_name);
-				CSV::connect()->data[$id] = $data;
+				$data['id'] = $good['id'];
+				CSV::connect()->data[$good['num']] = $data;
 				CSV::connect()->save();
 				self::updatedStatusCSV($updated[0], $updated[1], $data[$updated[1]], $csv_name);
 				CSV::disconnect();
 				return 2;
 			} else {
 				CSV::connect()->parse($csv_name);
-				CSV::connect()->data[$id] = $data;
+				$data['id'] = $good['id'];
+				CSV::connect()->data[$good['num']] = $data;
 				CSV::connect()->save();
 				CSV::disconnect();
 				return 2;
@@ -43,9 +47,32 @@ class Writer
 	}
 	
 	/**
+	 * Получение текущего id
+	 */
+	static private function getId($csv_name)
+	{
+		if (!file_exists($csv_name) or is_dir($csv_name)) {
+			unset($csv_name);
+			return 1;
+		}
+		$file = file_get_contents($csv_name);
+		$lines = explode("\r", $file);
+		//$lines = file($csv_name);
+		$lastLine = $lines[count($lines)-2];
+		preg_match('/(?<id>\d+);.*/', $lastLine, $match);
+		if (!empty($match['id'])) {
+			unset($file, $lines, $lastLine);
+			return $match['id']+1;
+		}
+		unset($file, $lines, $lastLine, $match);
+		return 1;
+	}
+	
+	/**
 	 * Проверяет наличие CSV файла и создает его в случае отсутствия
 	 */
-	static private function issetCSV($fields, $csv_name) {
+	static private function issetCSV($fields, $csv_name)
+	{
 		if (!file_exists(CSV) or !is_dir(CSV)) {
 			mkdir(CSV);
 		}
@@ -68,7 +95,8 @@ class Writer
 	/**
 	 * Обновляет статус-поля в CSV
 	 */
-	static private function updatedStatusCSV($updated, $updated_field, $ident, $csv_name) {
+	static private function updatedStatusCSV($updated, $updated_field, $ident, $csv_name)
+	{
 		CSV::connect()->parse($csv_name);
 		$find = CSV::connect()->data;
 		foreach ($find as $id => $good) {
@@ -89,9 +117,10 @@ class Writer
 	 * @param array $data Данные для записи ['поле' => 'значение']
 	 * @param array $where Имена полей из $data, по которым проверяется уникальность
 	 * @return false Запись не найдена
-	 * @return int id записи
+	 * @return array num - номер массива. id - id в таблице
 	 */
-	static private function getIssetInCSV($data, $where, $csv_name) {
+	static private function getIssetInCSV($data, $where, $csv_name)
+	{
 		$count = count($where);
 		CSV::connect()->parse($csv_name);
 		$find = CSV::connect()->data;
@@ -105,7 +134,10 @@ class Writer
 			}
 			if ($i >= $count) {
 				unset($find);
-				return $id;
+				return [
+					'id' => $good['id'],
+					'num' => $id
+				];
 			}
 		}
 		unset($find);

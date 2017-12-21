@@ -3,7 +3,7 @@ require __DIR__.'/../core.php';
 
 Logger::send("|START|SUCCESS| - Скрипт запущен. Парсинг из ".PARSER_NAME);
 
-$pause = 10;
+$pause = 30;
 
 // Проверяем не находится ли категория в блэк листе
 function isBlackCat($link) {
@@ -585,6 +585,17 @@ function parseGoodKokoMaku($href, $category) {
 	unset($html, $dom, $data, $csv, $category, $href, $pause);
 }
 
+// Получить название категории по ссылке
+function getTypeByLink($link) {
+	global $pause;
+	$html = Request::curl($link, $pause);
+	$dom = phpQuery::newDocument($html);
+	$type = trim($dom->find('a.BreadcrumbItem')->eq(1)->text());
+	$dom->unloadDocument();
+	unset($link, $html, $dom);
+	return $type;
+}
+
 // Получаем линки объявлений со страницы
 function parsPage($link, $page, $category, $size = 500) {
 	global $pause;
@@ -608,6 +619,9 @@ function parsPage($link, $page, $category, $size = 500) {
 	}
 	unset($html, $dom, $goods);
 	foreach ($hrefs as $href) {
+		if ($category != getTypeByLink($href)) {
+			continue;
+		}
 		if (
 			$category == 'Jääkiekkoluistimet' or
 			$category == 'Jääkiekkohartiasuojat' or
