@@ -223,13 +223,25 @@ class Writer
 	 * @param array $images Массив ссылок на изображения
 	 * @param string $folder Имя промежуточной директории в attachments
 	 */
-	static public function saveOnUpdateImages($id, $images, $folder = false)
+	static public function saveOnUpdateImages($id, $images, $folder = false, $path = false)
 	{
 		if (empty($images)) {
 			return null;
 		}
-		foreach ($images as $image) {
-			copy($image, self::getImgPath($id, $folder).'/'.self::getImgName($image));
+		if ($path) {
+			$imgs = '';
+			foreach ($images as $image) {
+				$imgs .= self::getImgPath($id, $folder).'/'.self::getImgName($image).',';
+			}
+			if ($imgs) {
+				return substr($imgs, 0, -1);
+			} else {
+				return $imgs;
+			}
+		} else {
+			foreach ($images as $image) {
+				copy($image, self::getImgPath($id, $folder).'/'.self::getImgName($image));
+			}
 		}
 	}
 	

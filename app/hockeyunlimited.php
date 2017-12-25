@@ -3,7 +3,7 @@ require __DIR__.'/../core.php';
 
 Logger::send("|START|SUCCESS| - Скрипт запущен. Парсинг из ".PARSER_NAME);
 
-$pause = 10;
+$pause = 0;
 
 // Проверяем не находится ли категория в блэк листе
 function isBlackCat($link) {
@@ -143,6 +143,7 @@ function parseGoodKoko($href, $category) {
 			'manufacturer' => getManufacturer(trim($dom->find('span.name')->text())),
 			'availableurl' => $href,
 			'koko' => $koko,
+			'photos' => Writer::saveOnUpdateImages(getIdent($html), getPhotos($dom), false, true),
 			'updated' => 0,
 		];
 		$csv = Writer::insertOrUpdateCSV($data, [
@@ -185,6 +186,7 @@ function parseGoodFlexKatisyys($href, $category) {
 				'availableurl' => $href,
 				'flex' => $flex,
 				'katisyys' => $katisyys,
+				'photos' => Writer::saveOnUpdateImages(getIdent($html), getPhotos($dom), false, true),
 				'updated' => 0,
 			];
 			$csv = Writer::insertOrUpdateCSV($data, [
@@ -229,6 +231,7 @@ function parseGoodKokoVari($href, $category) {
 				'availableurl' => $href,
 				'koko' => $koko,
 				'vari' => $vari,
+				'photos' => Writer::saveOnUpdateImages(getIdent($html), getPhotos($dom), false, true),
 				'updated' => 0,
 			];
 			$csv = Writer::insertOrUpdateCSV($data, [
@@ -277,6 +280,7 @@ function parseGoodKokoVariFlexKatisyys($href, $category) {
 						'vari' => $vari,
 						'flex' => $flex,
 						'katisyys' => $katisyys,
+						'photos' => Writer::saveOnUpdateImages(getIdent($html), getPhotos($dom), false, true),
 						'updated' => 0,
 					];
 					$csv = Writer::insertOrUpdateCSV($data, [
@@ -327,6 +331,7 @@ function parseGoodKokoVariPituus($href, $category) {
 					'koko' => $koko,
 					'vari' => $vari,
 					'pituus' => $pituus,
+					'photos' => Writer::saveOnUpdateImages(getIdent($html), getPhotos($dom), false, true),
 					'updated' => 0,
 				];
 				$csv = Writer::insertOrUpdateCSV($data, [
@@ -377,6 +382,7 @@ function parseGoodKokoVariElainPituus($href, $category) {
 						'vari' => $vari,
 						'elain' => $elain,
 						'pituus' => $pituus,
+						'photos' => Writer::saveOnUpdateImages(getIdent($html), getPhotos($dom), false, true),
 						'updated' => 0,
 					];
 					$csv = Writer::insertOrUpdateCSV($data, [
@@ -427,6 +433,7 @@ function parseGoodKokoVariMaku($href, $category) {
 					'koko' => $koko,
 					'vari' => $vari,
 					'maku' => $maku,
+					'photos' => Writer::saveOnUpdateImages(getIdent($html), getPhotos($dom), false, true),
 					'updated' => 0,
 				];
 				$csv = Writer::insertOrUpdateCSV($data, [
@@ -475,6 +482,7 @@ function parseGoodKokoVariPouli($href, $category) {
 					'koko' => $koko,
 					'vari' => $vari,
 					'puoli' => $puoli,
+					'photos' => Writer::saveOnUpdateImages(getIdent($html), getPhotos($dom), false, true),
 					'updated' => 0,
 				];
 				$csv = Writer::insertOrUpdateCSV($data, [
@@ -519,6 +527,7 @@ function parseGoodVari($href, $category) {
 			'manufacturer' => getManufacturer(trim($dom->find('span.name')->text())),
 			'availableurl' => $href,
 			'vari' => $vari,
+			'photos' => Writer::saveOnUpdateImages(getIdent($html), getPhotos($dom), false, true),
 			'updated' => 0,
 		];
 		$csv = Writer::insertOrUpdateCSV($data, [
@@ -561,6 +570,7 @@ function parseGoodKokoMaku($href, $category) {
 				'availableurl' => $href,
 				'koko' => $koko,
 				'maku' => $maku,
+				'photos' => Writer::saveOnUpdateImages(getIdent($html), getPhotos($dom), false, true),
 				'updated' => 0,
 			];
 			$csv = Writer::insertOrUpdateCSV($data, [
