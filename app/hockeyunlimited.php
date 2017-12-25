@@ -3,7 +3,7 @@ require __DIR__.'/../core.php';
 
 Logger::send("|START|SUCCESS| - Скрипт запущен. Парсинг из ".PARSER_NAME);
 
-$pause = 30;
+$pause = 10;
 
 // Проверяем не находится ли категория в блэк листе
 function isBlackCat($link) {

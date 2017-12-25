@@ -190,7 +190,7 @@ class Writer
 	 */
 	static public function getCSVName($category)
 	{
-		$name = str_replace(['ä', ' '], ['a', '_'], mb_strtolower($category)).'.csv';
+		$name = str_replace(['ä', 'ö', '/', ' '], ['a', 'o', '-', '_'], mb_strtolower($category)).'.csv';
 		return CSV_PARSER.'/'.$name;
 	}
 	
