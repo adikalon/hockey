@@ -279,4 +279,121 @@ class Writer
 		}
 		return $resource;
 	}
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	// Возврат записи в MySQL
+	
+	
+	
+	/**
+	 * Обновит или создаст новую запись в MySQL
+	 *
+	 * @param array $data Данные для записи ['поле' => 'значение']
+	 * @param array $where Имена полей из $data, по которым проверяется уникальность
+	 * @param array $updated Поле-статус, поле-идентификатор. Для self::deleteNoUpdated()
+	 * @return 1 Запись добавлена
+	 * @return 2 Запись обновлена
+	 */
+	static public function insertOrUpdate($data, $where, $updated = false)
+	{
+		$sql = "SELECT * FROM ".DB::$table." WHERE ".self::whereQuery($data, $where)." LIMIT 1";
+		$find = DB::connect()->query($sql);
+		$row = $find->fetch();
+		if ($row) {
+			if (is_array($updated)) {
+				$data[$updated[0]] = 1;
+				DB::connect()->exec(self::updateQuery($data, $where));
+				$sql = "UPDATE ".DB::$table." SET ".$updated[0]."=2 WHERE ".$updated[0]."!=1 AND ".$updated[1]."=".$data[$updated[1]];
+				DB::connect()->exec($sql);
+				return 2;
+			} else {
+				DB::connect()->exec(self::updateQuery($data, $where));
+				return 2;
+			}
+		} else {
+			DB::connect()->exec(self::insertQuery($data));
+			return 1;
+		}
+	}
+	
+	/**
+	 * Удаляет записи, которые не обновились. Только для записей с общим идентификатором
+	 *
+	 * Работает в связке с self::insertOrUpdate() и параметром $updated
+	 *
+	 * @param string $ident Идентификатор записи
+	 * @param string $identField Имя поля, в котором искать $ident
+	 * @param string $updatedField Имя поля-cтатуса
+	 */
+	static public function deleteNoUpdated($ident, $identField, $updatedField)
+	{
+		$ident = DB::connect()->quote($ident);
+		$sql = "DELETE FROM ".DB::$table." WHERE $updatedField=2 AND $identField=$ident";
+		DB::connect()->exec($sql);
+		$sql = "UPDATE ".DB::$table." SET $updatedField=0 WHERE $identField=$ident";
+		DB::connect()->exec($sql);
+	}
+	
+	/**
+	 * Составляет подстроку запроса для where
+	 */
+	static private function whereQuery($data, $where)
+	{
+		$query = '';
+		foreach ($where as $key) {
+			$query .= $key.'='.DB::connect()->quote($data[$key]).' AND ';
+		}
+		return substr(trim($query), 0, -4);
+	}
+	
+	/**
+	 * Составляет запрос для update
+	 */
+	static private function updateQuery($data, $where)
+	{
+		$sets = '';
+		foreach ($data as $k => $v) {
+			$sets .= $k.'='.DB::connect()->quote($v).', ';
+		}
+		return "UPDATE ".DB::$table." SET ".substr(trim($sets), 0, -1)." WHERE ".self::whereQuery($data, $where)." LIMIT 1";
+	}
+	
+	/**
+	 * Составляет запрос для insert
+	 */
+	static private function insertQuery($data)
+	{
+		$keys = '';
+		$valus = '';
+		foreach ($data as $k => $v) {
+			$keys .= $k.', ';
+			$valus .= DB::connect()->quote($v).', ';
+		}
+		return "INSERT INTO ".DB::$table." (".substr(trim($keys), 0, -1).") VALUES (".substr(trim($valus), 0, -1).")";
+	}
+	
+	/**
+	 * Удаляет товар
+	 */
+	static public function deleteGoods($field, $value)
+	{
+		$field = DB::connect()->quote($field);
+		$value = DB::connect()->quote($value);
+		$sql = "DELETE FROM ".DB::$table." WHERE $field=$value";
+		DB::connect()->exec($sql);
+	}
 }

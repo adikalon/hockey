@@ -3,7 +3,7 @@ require __DIR__.'/../core.php';
 
 Logger::send("|START|SUCCESS| - Скрипт запущен. Парсинг из ".PARSER_NAME);
 
-$pause = 0;
+$pause = 5;
 
 // Проверяем не находится ли категория в блэк листе
 function isBlackCat($link) {
@@ -595,6 +595,72 @@ function parseGoodKokoMaku($href, $category) {
 	unset($html, $dom, $data, $csv, $category, $href, $pause);
 }
 
+// Запись в MySQL
+function parseGood($href) {
+	global $pause;
+	$html = Request::curl($href, $pause);
+	$dom = phpQuery::newDocument($html);
+	foreach (getParams($dom, 'Koko') as $koko) {
+		foreach (getParams($dom, 'Flex') as $flex) {
+			foreach (getParams($dom, 'Kätisyys') as $katisyys) {
+				foreach (getParams($dom, 'Väri') as $vari) {
+					foreach (getParams($dom, 'Pituus') as $pituus) {
+						foreach (getParams($dom, 'Eläin') as $elain) {
+							foreach (getParams($dom, 'Maku') as $maku) {
+								foreach (getParams($dom, 'Puoli') as $puoli) {
+									$data = [
+										'product_id' => getIdent($html),
+										'category' => trim($dom->find('a.BreadcrumbItem')->eq(1)->text()),
+										'title' => trim($dom->find('span.name')->text()),
+										'season' => getSeason(trim($dom->find('span.name')->text())),
+										'price' => trim($dom->find('span.price-value>span')->attr('content')),
+										'price_without_discount' => str_replace(['€', ',', ' '], ['', '.', ''], $dom->find('span.LineThrough')->text()),
+										'product_type' => trim($dom->find('a.BreadcrumbItem')->eq(1)->text()),
+										'product_age' => getProductAge(trim($dom->find('span.name')->text())),
+										'manufacturer' => getManufacturer(trim($dom->find('span.name')->text())),
+										'availableurl' => $href,
+										'koko' => $koko,
+										'flex' => $flex,
+										'katisyys' => $katisyys,
+										'vari' => $vari,
+										'pituus' => $pituus,
+										'elain' => $elain,
+										'maku' => $maku,
+										'puoli' => $puoli,
+										'updated' => 0,
+									];
+									$mysql = Writer::insertOrUpdate($data, [
+										'availableurl',
+										'koko',
+										'flex',
+										'katisyys',
+										'vari',
+										'pituus',
+										'elain',
+										'maku',
+										'puoli',
+									], ['updated', 'product_id']);
+									switch ($mysql) {
+										case 1:
+											Logger::send("|RECORD|ADD| - Товар ".$data['title']." добавлен в MySQL");
+											break;
+										case 2:
+											Logger::send("|RECORD|UPDATE| - Товар ".$data['title']." обновлен в MySQL");
+											break;
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	Writer::deleteNoUpdated($data['product_id'], 'product_id', 'updated');
+	$dom->unloadDocument();
+	unset($html, $dom, $data, $mysql, $category, $href, $pause);
+}
+
 // Получить название категории по ссылке
 function getTypeByLink($link) {
 	global $pause;
@@ -676,6 +742,7 @@ function parsPage($link, $page, $category, $size = 500) {
 		} else {
 			break;
 		}
+		parseGood($href);
 	}
 }
 
